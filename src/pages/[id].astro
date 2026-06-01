@@ -12,130 +12,435 @@ const meta = registry.find(s => s.id === id);
 if (!meta) {
   return Astro.redirect('/');
 }
+
+function subScript(s: string): string {
+  return s
+    .replace(/₀/g,'<sub>0</sub>')
+    .replace(/₁/g,'<sub>1</sub>')
+    .replace(/₂/g,'<sub>2</sub>')
+    .replace(/₃/g,'<sub>3</sub>')
+    .replace(/₄/g,'<sub>4</sub>')
+    .replace(/₅/g,'<sub>5</sub>')
+    .replace(/₆/g,'<sub>6</sub>')
+    .replace(/₇/g,'<sub>7</sub>')
+    .replace(/₈/g,'<sub>8</sub>')
+    .replace(/₉/g,'<sub>9</sub>');
+}
 ---
 
 <Base title={`${meta.name} — Structure Hub`} description={meta.notes || `3D viewer for ${meta.name} (${meta.formula})`}>
 
-  <!-- Full-height layout: viewer left, info right -->
-  <div style="display: flex; height: calc(100vh - 57px); overflow: hidden;">
+  <div class="viewer-layout">
 
-    <!-- 3Dmol.js Viewer Panel -->
-    <div style="flex: 1; position: relative; background: #f2f2fa; min-width: 0;">
-      <div id="viewer-container" style="width: 100%; height: 100%;"></div>
+    <!-- ---- 3Dmol.js Viewer Panel ---- -->
+    <div class="viewer-pane">
+      <div id="viewer-container" class="viewer-canvas"></div>
 
       <!-- Loading overlay -->
-      <div id="loading" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f2f2fa; gap: 1rem;">
-        <div style="width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-        <span style="color: var(--muted); font-size: 0.85rem;">Loading structure...</span>
+      <div id="loading" class="loading-overlay">
+        <div class="spinner"></div>
+        <span>Loading structure…</span>
       </div>
 
-      <!-- Viewer controls overlay -->
-      <div id="viewer-controls" style="position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%); display: none; gap: 0.5rem; background: rgba(247,247,252,0.92); backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; align-items: center;">
-        <button id="btn-ball-stick" onclick="setStyle('ball-stick')" class="ctrl-btn active" title="Ball and stick" style="background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
+      <!-- Floating controls bar -->
+      <div id="viewer-controls" class="controls-bar" style="display: none;">
+        <!-- Style buttons -->
+        <button id="btn-ball-stick" onclick="setStyle('ball-stick')" class="ctrl-btn active" title="Ball and stick">
           Ball+Stick
         </button>
-        <button id="btn-sphere" onclick="setStyle('sphere')" class="ctrl-btn" title="Space-filling" style="background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
+        <button id="btn-sphere" onclick="setStyle('sphere')" class="ctrl-btn" title="Spacefill">
           Spacefill
         </button>
-        <button id="btn-stick" onclick="setStyle('stick')" class="ctrl-btn" title="Stick model" style="background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
+        <button id="btn-stick" onclick="setStyle('stick')" class="ctrl-btn" title="Stick model">
           Stick
         </button>
-        <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
-        <button id="btn-spin" onclick="toggleSpin()" title="Toggle spin" style="background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
-          ⟳ Spin
+        <div class="ctrl-divider"></div>
+        <!-- Actions -->
+        <button id="btn-spin" onclick="toggleSpin()" class="ctrl-btn" title="Toggle spin">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 8a6 6 0 1 0 6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2 4.5V8H5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Spin
         </button>
-        <button onclick="resetView()" title="Reset camera" style="background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
-          ⌖ Reset
+        <button onclick="resetView()" class="ctrl-btn" title="Reset camera">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>
+          Reset
         </button>
-        <button id="btn-cell" onclick="toggleCell()" title="Toggle unit cell" style="background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
-          ▣ Cell
+        <button id="btn-cell" onclick="toggleCell()" class="ctrl-btn" title="Toggle unit cell">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="5" width="6" height="6" rx="0.5" stroke="currentColor" stroke-width="1.2"/></svg>
+          Cell
         </button>
       </div>
     </div>
 
-    <!-- Info Panel -->
-    <div style="width: 320px; min-width: 280px; border-left: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;">
+    <!-- ---- Info Panel ---- -->
+    <div class="info-pane">
 
-      <!-- Back link -->
-      <div style="padding: 1rem 1.5rem 0.75rem; border-bottom: 1px solid var(--border);">
-        <a href="/" style="display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.8rem; text-decoration: none; transition: color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Gallery
+      <!-- Back navigation -->
+      <div class="info-nav">
+        <a href="/" class="back-link">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          All structures
         </a>
       </div>
 
-      <!-- Main info -->
-      <div style="padding: 1.5rem; flex: 1;">
-        <h1 style="font-size: 1.3rem; font-weight: 600; color: var(--text); margin: 0 0 0.4rem; letter-spacing: -0.02em; line-height: 1.3;" set:html={meta.name.replace(/₂/g,'<sub>2</sub>').replace(/₄/g,'<sub>4</sub>').replace(/₃/g,'<sub>3</sub>')} />
-
-        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1rem; color: var(--accent); font-weight: 500; margin-bottom: 1.25rem;">
-          {meta.formula}
-        </div>
-
-        <!-- Tags row -->
-        <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+      <!-- Title block -->
+      <div class="info-title-block">
+        <h1 class="info-name" set:html={subScript(meta.name)} />
+        <div class="info-formula">{meta.formula}</div>
+        <div class="info-tags">
           <span class="tag project">{meta.project}</span>
           {(meta.tags || []).map(t => <span class="tag">{t}</span>)}
         </div>
-
-        {meta.notes && (
-          <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-            <p style="font-size: 0.84rem; color: var(--muted); margin: 0; line-height: 1.6;">{meta.notes}</p>
-          </div>
-        )}
-
-        <!-- Metadata table -->
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-bottom: 1.5rem;">
-          <tbody>
-            <tr>
-              <td style="color: var(--muted); padding: 0.35rem 0; width: 90px;">Format</td>
-              <td style="color: var(--text); font-family: 'JetBrains Mono', monospace;">{meta.format.toUpperCase()}</td>
-            </tr>
-            <tr>
-              <td style="color: var(--muted); padding: 0.35rem 0;">Published</td>
-              <td style="color: var(--text);">{meta.date}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Actions -->
-        <div style="display: flex; flex-direction: column; gap: 0.6rem;">
-          <a
-            href={`/structures/${id}/data.${meta.format}`}
-            download
-            style="display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--accent); color: white; padding: 0.6rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500; text-decoration: none; transition: background 0.15s;"
-            onmouseover="this.style.background='var(--accent-dim)'"
-            onmouseout="this.style.background='var(--accent)'"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2v8m0 0l-3-3m3 3l3-3M3 13h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Download {meta.format.toUpperCase()}
-          </a>
-          <button
-            id="copy-btn"
-            onclick="copyLink()"
-            style="display: flex; align-items: center; justify-content: center; gap: 8px; background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 0.6rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-family: inherit; transition: all 0.15s;"
-            onmouseover="this.style.borderColor='var(--accent)'; this.style.color='var(--accent)'"
-            onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--muted)'"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 11V3h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-            Copy Link
-          </button>
-        </div>
       </div>
 
+      <!-- Actions — shown prominently, high on mobile -->
+      <div class="info-actions">
+        <a
+          href={`/structures/${id}/data.${meta.format}`}
+          download
+          class="btn-primary"
+        >
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8m0 0l-3-3m3 3l3-3M3 13h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Download {meta.format.toUpperCase()}
+        </a>
+        <button id="copy-btn" onclick="copyLink()" class="btn-secondary">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 11V3h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Copy Link
+        </button>
+      </div>
+
+      <!-- Notes -->
+      {meta.notes && (
+        <div class="info-notes">
+          <p>{meta.notes}</p>
+        </div>
+      )}
+
+      <!-- Metadata table -->
+      <table class="info-meta">
+        <tbody>
+          <tr>
+            <td class="meta-label">Format</td>
+            <td class="meta-value mono">{meta.format.toUpperCase()}</td>
+          </tr>
+          <tr>
+            <td class="meta-label">Published</td>
+            <td class="meta-value">{meta.date}</td>
+          </tr>
+        </tbody>
+      </table>
+
       <!-- Footer -->
-      <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--muted);">
-        <a href="https://heinz-lab.colorado.edu" target="_blank" rel="noopener" style="color: var(--muted);">Heinz Interfaces Laboratory</a>
-        <span style="margin: 0 0.5rem;">·</span>
-        CU Boulder
+      <div class="info-footer">
+        <a href="https://heinz-lab.colorado.edu" target="_blank" rel="noopener">
+          Heinz Interfaces Laboratory
+        </a>
+        <span>·</span>
+        <span>CU Boulder</span>
       </div>
     </div>
   </div>
 </Base>
 
 <style>
+  /* ============================
+     LAYOUT — mobile first (stacked)
+     ============================ */
+
+  .viewer-layout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Viewer pane */
+  .viewer-pane {
+    position: relative;
+    background: #f2f2fa;
+    /* On mobile: fixed viewport height so 3Dmol has a real container */
+    height: 56vw;
+    min-height: 280px;
+    max-height: 60vh;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .viewer-canvas {
+    width: 100%;
+    height: 100%;
+    touch-action: none; /* prevent page scroll when rotating in viewer */
+  }
+
+  /* Loading */
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f2f2fa;
+    gap: 0.875rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .spinner {
+    width: 36px;
+    height: 36px;
+    border: 2.5px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+
   @keyframes spin {
     to { transform: rotate(360deg); }
+  }
+
+  /* Controls bar */
+  .controls-bar {
+    position: absolute;
+    bottom: 0.875rem;
+    left: 50%;
+    transform: translateX(-50%);
+    /* Allow horizontal scroll on narrow screens */
+    max-width: calc(100% - 1.5rem);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(247, 247, 252, 0.93);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.45rem 0.65rem;
+    white-space: nowrap;
+  }
+
+  .controls-bar::-webkit-scrollbar { display: none; }
+
+  .ctrl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    /* Touch-friendly minimum */
+    min-height: 34px;
+  }
+
+  .ctrl-btn.active {
+    background: var(--surface2);
+    color: var(--text);
+    border-color: var(--border);
+  }
+
+  .ctrl-btn:hover,
+  .ctrl-btn.on {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .ctrl-divider {
+    width: 1px;
+    height: 18px;
+    background: var(--border);
+    margin: 0 0.15rem;
+    flex-shrink: 0;
+  }
+
+  /* Info pane */
+  .info-pane {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+
+  .info-nav {
+    padding: 0.875rem 1.25rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .back-link:hover {
+    color: var(--text);
+  }
+
+  .info-title-block {
+    padding: 1.25rem 1.25rem 0;
+  }
+
+  .info-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 0.3rem;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+
+  .info-formula {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+    color: var(--accent);
+    font-weight: 500;
+    margin-bottom: 0.875rem;
+  }
+
+  .info-tags {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+
+  /* Actions — prominent at top of info, full width */
+  .info-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0 1.25rem 1.25rem;
+  }
+
+  /* Notes */
+  .info-notes {
+    margin: 0 1.25rem 1.25rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.875rem 1rem;
+  }
+
+  .info-notes p {
+    font-size: 0.83rem;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* Meta table */
+  .info-meta {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    margin: 0 0 1.25rem;
+    padding: 0 1.25rem;
+    display: block;
+  }
+
+  .info-meta tbody {
+    display: block;
+    padding: 0 1.25rem;
+  }
+
+  .info-meta tr {
+    display: flex;
+  }
+
+  .meta-label {
+    color: var(--muted);
+    padding: 0.3rem 0;
+    width: 90px;
+    flex-shrink: 0;
+  }
+
+  .meta-value {
+    color: var(--text);
+    padding: 0.3rem 0;
+  }
+
+  .meta-value.mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Footer */
+  .info-footer {
+    margin-top: auto;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .info-footer a {
+    color: var(--muted);
+  }
+
+  .info-footer a:hover {
+    color: var(--accent);
+  }
+
+  /* ============================
+     DESKTOP — side-by-side
+     ============================ */
+
+  @media (min-width: 768px) {
+    .viewer-layout {
+      flex-direction: row;
+      height: calc(100vh - var(--header-h));
+      overflow: hidden;
+    }
+
+    .viewer-pane {
+      flex: 1;
+      height: auto;
+      min-height: 0;
+      max-height: none;
+    }
+
+    .info-pane {
+      width: 300px;
+      min-width: 260px;
+      max-width: 340px;
+      border-top: none;
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .info-name { font-size: 1.35rem; }
+
+    .info-actions {
+      flex-direction: column;
+    }
+
+    .controls-bar {
+      /* On desktop, controls don't need to scroll */
+      max-width: calc(100% - 3rem);
+      overflow-x: visible;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .info-pane {
+      width: 320px;
+    }
   }
 </style>
 
@@ -145,7 +450,7 @@ if (!meta) {
   let cellVisible = true;
   let currentStyle = 'ball-stick';
 
-  // Load 3Dmol.js dynamically
+  // Load 3Dmol.js
   const script = document.createElement('script');
   script.src = 'https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.1.0/3Dmol-min.js';
   script.onload = () => loadStructure();
@@ -169,13 +474,12 @@ if (!meta) {
       viewer.zoomTo();
       viewer.render();
 
-      // Hide loading, show controls
       document.getElementById('loading').style.display = 'none';
       document.getElementById('viewer-controls').style.display = 'flex';
-    } catch(err) {
+    } catch (err) {
       const loading = document.getElementById('loading');
       if (loading) {
-        loading.innerHTML = `<p style="color: #f87171; font-size: 0.85rem; text-align: center; max-width: 280px;">Could not load structure file.<br>The structure may not be published yet.</p>`;
+        loading.innerHTML = `<p style="color: #f87171; font-size: 0.85rem; text-align: center; max-width: 260px; padding: 0 1rem;">Could not load structure file.<br>The structure may not be published yet.</p>`;
       }
     }
   }
@@ -193,13 +497,11 @@ if (!meta) {
     }
     viewer.render();
 
-    // Update button states
-    document.querySelectorAll('.ctrl-btn').forEach(b => {
-      b.style.background = 'transparent';
-      b.style.color = 'var(--muted)';
+    // Update active button
+    ['ball-stick', 'sphere', 'stick'].forEach(s => {
+      const btn = document.getElementById(`btn-${s}`);
+      if (btn) btn.classList.toggle('active', s === style);
     });
-    const active = document.getElementById(`btn-${style === 'ball-stick' ? 'ball-stick' : style === 'sphere' ? 'sphere' : 'stick'}`);
-    if (active) { active.style.background = 'var(--surface2)'; active.style.color = 'var(--text)'; }
   }
 
   function setStyle(style) { applyStyle(style); }
@@ -209,7 +511,7 @@ if (!meta) {
     spinning = !spinning;
     viewer.spin(spinning);
     const btn = document.getElementById('btn-spin');
-    if (btn) { btn.style.color = spinning ? 'var(--accent)' : 'var(--muted)'; btn.style.borderColor = spinning ? 'var(--accent)' : 'var(--border)'; }
+    if (btn) btn.classList.toggle('on', spinning);
   }
 
   function resetView() {
@@ -224,7 +526,7 @@ if (!meta) {
     if (cellVisible) viewer.addUnitCell(); else viewer.removeUnitCell();
     viewer.render();
     const btn = document.getElementById('btn-cell');
-    if (btn) { btn.style.color = cellVisible ? 'var(--accent)' : 'var(--muted)'; btn.style.borderColor = cellVisible ? 'var(--accent)' : 'var(--border)'; }
+    if (btn) btn.classList.toggle('on', cellVisible);
   }
 
   function copyLink() {
@@ -232,15 +534,18 @@ if (!meta) {
       const btn = document.getElementById('copy-btn');
       if (btn) {
         const orig = btn.innerHTML;
-        btn.innerHTML = '✓ Copied!';
+        btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8l3 3 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Copied!';
         btn.style.color = 'var(--success)';
         btn.style.borderColor = 'var(--success)';
-        setTimeout(() => { btn.innerHTML = orig; btn.style.color = 'var(--muted)'; btn.style.borderColor = 'var(--border)'; }, 2000);
+        setTimeout(() => {
+          btn.innerHTML = orig;
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }, 2000);
       }
     });
   }
 
-  // Make functions global
   window.setStyle = setStyle;
   window.toggleSpin = toggleSpin;
   window.resetView = resetView;

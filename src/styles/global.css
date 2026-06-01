@@ -10,10 +10,12 @@
   --text: #1a1a2e;
   --muted: #6b6b8a;
   --success: #10b981;
+  --header-h: 56px;
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html, body {
@@ -23,6 +25,7 @@ html, body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
@@ -34,6 +37,7 @@ a:hover {
   color: #818cf8;
 }
 
+/* Tag chips */
 .tag {
   display: inline-block;
   background: var(--surface2);
@@ -44,10 +48,68 @@ a:hover {
   border-radius: 9999px;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .tag.project {
   background: rgba(99, 102, 241, 0.12);
   border-color: rgba(99, 102, 241, 0.3);
-  color: #a5b4fc;
+  color: var(--accent-dim);
+}
+
+/* Shared buttons */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--accent);
+  color: white;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+  min-height: 44px;
+}
+
+.btn-primary:hover {
+  background: var(--accent-dim);
+  color: white;
+}
+
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  min-height: 44px;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Scrollbar utilities */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scroll-x::-webkit-scrollbar {
+  display: none;
 }
