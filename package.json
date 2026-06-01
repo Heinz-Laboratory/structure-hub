@@ -1,0 +1,17 @@
+{
+  "name": "structure-hub",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Heinz Lab Structure Hub — interactive 3D molecular viewer",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "astro": "^5.17.1",
+    "tailwindcss": "^4.1.18"
+  }
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "cu2o-cuprite",
+    "name": "Cu₂O (cuprite)",
+    "formula": "Cu2O",
+    "project": "cu-ff",
+    "format": "cif",
+    "date": "2026-06-01",
+    "tags": ["copper", "oxide", "force-field", "iff"],
+    "notes": "Cuprite structure, cubic Pn-3m. Used in Cu FF parameterization."
+  },
+  {
+    "id": "cuo-tenorite",
+    "name": "CuO (tenorite)",
+    "formula": "CuO",
+    "project": "cu-ff",
+    "format": "cif",
+    "date": "2026-06-01",
+    "tags": ["copper", "oxide", "jahn-teller", "iff"],
+    "notes": "Tenorite, monoclinic C2/c. Jahn-Teller distorted Cu²⁺."
+  },
+  {
+    "id": "cuso4-5h2o-chalcanthite",
+    "name": "CuSO₄·5H₂O (chalcanthite)",
+    "formula": "CuSO4·5H2O",
+    "project": "cu-ff",
+    "format": "cif",
+    "date": "2026-06-01",
+    "tags": ["copper", "sulfate", "hydrate", "iff"],
+    "notes": "Chalcanthite, triclinic P-1. Cu²⁺ octahedral coordination (4 H₂O + 2 SO₄)."
+  }
+]

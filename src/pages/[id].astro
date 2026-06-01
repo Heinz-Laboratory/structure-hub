@@ -1,0 +1,249 @@
+---
+import Base from '../layouts/Base.astro';
+import registry from '../data/structure-registry.json';
+
+export function getStaticPaths() {
+  return registry.map(s => ({ params: { id: s.id } }));
+}
+
+const { id } = Astro.params;
+const meta = registry.find(s => s.id === id);
+
+if (!meta) {
+  return Astro.redirect('/');
+}
+---
+
+<Base title={`${meta.name} — Structure Hub`} description={meta.notes || `3D viewer for ${meta.name} (${meta.formula})`}>
+
+  <!-- Full-height layout: viewer left, info right -->
+  <div style="display: flex; height: calc(100vh - 57px); overflow: hidden;">
+
+    <!-- 3Dmol.js Viewer Panel -->
+    <div style="flex: 1; position: relative; background: #0d0d14; min-width: 0;">
+      <div id="viewer-container" style="width: 100%; height: 100%;"></div>
+
+      <!-- Loading overlay -->
+      <div id="loading" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0d0d14; gap: 1rem;">
+        <div style="width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <span style="color: var(--muted); font-size: 0.85rem;">Loading structure...</span>
+      </div>
+
+      <!-- Viewer controls overlay -->
+      <div id="viewer-controls" style="position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%); display: none; gap: 0.5rem; background: rgba(10,10,15,0.85); backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; align-items: center;">
+        <button id="btn-ball-stick" onclick="setStyle('ball-stick')" class="ctrl-btn active" title="Ball and stick" style="background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
+          Ball+Stick
+        </button>
+        <button id="btn-sphere" onclick="setStyle('sphere')" class="ctrl-btn" title="Space-filling" style="background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
+          Spacefill
+        </button>
+        <button id="btn-stick" onclick="setStyle('stick')" class="ctrl-btn" title="Stick model" style="background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
+          Stick
+        </button>
+        <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
+        <button id="btn-spin" onclick="toggleSpin()" title="Toggle spin" style="background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
+          ⟳ Spin
+        </button>
+        <button onclick="resetView()" title="Reset camera" style="background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
+          ⌖ Reset
+        </button>
+        <button id="btn-cell" onclick="toggleCell()" title="Toggle unit cell" style="background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: inherit; transition: all 0.15s;">
+          ▣ Cell
+        </button>
+      </div>
+    </div>
+
+    <!-- Info Panel -->
+    <div style="width: 320px; min-width: 280px; border-left: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;">
+
+      <!-- Back link -->
+      <div style="padding: 1rem 1.5rem 0.75rem; border-bottom: 1px solid var(--border);">
+        <a href="/" style="display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.8rem; text-decoration: none; transition: color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Gallery
+        </a>
+      </div>
+
+      <!-- Main info -->
+      <div style="padding: 1.5rem; flex: 1;">
+        <h1 style="font-size: 1.3rem; font-weight: 600; color: var(--text); margin: 0 0 0.4rem; letter-spacing: -0.02em; line-height: 1.3;" set:html={meta.name.replace(/₂/g,'<sub>2</sub>').replace(/₄/g,'<sub>4</sub>').replace(/₃/g,'<sub>3</sub>')} />
+
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1rem; color: var(--accent); font-weight: 500; margin-bottom: 1.25rem;">
+          {meta.formula}
+        </div>
+
+        <!-- Tags row -->
+        <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+          <span class="tag project">{meta.project}</span>
+          {(meta.tags || []).map(t => <span class="tag">{t}</span>)}
+        </div>
+
+        {meta.notes && (
+          <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+            <p style="font-size: 0.84rem; color: var(--muted); margin: 0; line-height: 1.6;">{meta.notes}</p>
+          </div>
+        )}
+
+        <!-- Metadata table -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-bottom: 1.5rem;">
+          <tbody>
+            <tr>
+              <td style="color: var(--muted); padding: 0.35rem 0; width: 90px;">Format</td>
+              <td style="color: var(--text); font-family: 'JetBrains Mono', monospace;">{meta.format.toUpperCase()}</td>
+            </tr>
+            <tr>
+              <td style="color: var(--muted); padding: 0.35rem 0;">Published</td>
+              <td style="color: var(--text);">{meta.date}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Actions -->
+        <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+          <a
+            href={`/structures/${id}/data.${meta.format}`}
+            download
+            style="display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--accent); color: white; padding: 0.6rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500; text-decoration: none; transition: background 0.15s;"
+            onmouseover="this.style.background='var(--accent-dim)'"
+            onmouseout="this.style.background='var(--accent)'"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2v8m0 0l-3-3m3 3l3-3M3 13h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download {meta.format.toUpperCase()}
+          </a>
+          <button
+            id="copy-btn"
+            onclick="copyLink()"
+            style="display: flex; align-items: center; justify-content: center; gap: 8px; background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 0.6rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-family: inherit; transition: all 0.15s;"
+            onmouseover="this.style.borderColor='var(--accent)'; this.style.color='var(--accent)'"
+            onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--muted)'"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 11V3h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Copy Link
+          </button>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--muted);">
+        <a href="https://heinz-lab.colorado.edu" target="_blank" rel="noopener" style="color: var(--muted);">Heinz Interfaces Laboratory</a>
+        <span style="margin: 0 0.5rem;">·</span>
+        CU Boulder
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+
+<script define:vars={{ id, format: meta.format }}>
+  let viewer = null;
+  let spinning = false;
+  let cellVisible = true;
+  let currentStyle = 'ball-stick';
+
+  // Load 3Dmol.js dynamically
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.1.0/3Dmol-min.js';
+  script.onload = () => loadStructure();
+  document.head.appendChild(script);
+
+  async function loadStructure() {
+    try {
+      const res = await fetch(`/structures/${id}/data.${format}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.text();
+
+      const container = document.getElementById('viewer-container');
+      viewer = $3Dmol.createViewer(container, {
+        backgroundColor: '#0d0d14',
+        antialias: true,
+      });
+
+      viewer.addModel(data, format === 'cif' ? 'cif' : format);
+      applyStyle('ball-stick');
+      viewer.addUnitCell();
+      viewer.zoomTo();
+      viewer.render();
+
+      // Hide loading, show controls
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('viewer-controls').style.display = 'flex';
+    } catch(err) {
+      const loading = document.getElementById('loading');
+      if (loading) {
+        loading.innerHTML = `<p style="color: #f87171; font-size: 0.85rem; text-align: center; max-width: 280px;">Could not load structure file.<br>The structure may not be published yet.</p>`;
+      }
+    }
+  }
+
+  function applyStyle(style) {
+    if (!viewer) return;
+    currentStyle = style;
+    viewer.setStyle({}, {});
+    if (style === 'ball-stick') {
+      viewer.setStyle({}, { sphere: { radius: 0.28, colorscheme: 'Jmol' }, stick: { radius: 0.12, colorscheme: 'Jmol' } });
+    } else if (style === 'sphere') {
+      viewer.setStyle({}, { sphere: { colorscheme: 'Jmol' } });
+    } else if (style === 'stick') {
+      viewer.setStyle({}, { stick: { radius: 0.15, colorscheme: 'Jmol' } });
+    }
+    viewer.render();
+
+    // Update button states
+    document.querySelectorAll('.ctrl-btn').forEach(b => {
+      b.style.background = 'transparent';
+      b.style.color = 'var(--muted)';
+    });
+    const active = document.getElementById(`btn-${style === 'ball-stick' ? 'ball-stick' : style === 'sphere' ? 'sphere' : 'stick'}`);
+    if (active) { active.style.background = 'var(--surface2)'; active.style.color = 'var(--text)'; }
+  }
+
+  function setStyle(style) { applyStyle(style); }
+
+  function toggleSpin() {
+    if (!viewer) return;
+    spinning = !spinning;
+    viewer.spin(spinning);
+    const btn = document.getElementById('btn-spin');
+    if (btn) { btn.style.color = spinning ? 'var(--accent)' : 'var(--muted)'; btn.style.borderColor = spinning ? 'var(--accent)' : 'var(--border)'; }
+  }
+
+  function resetView() {
+    if (!viewer) return;
+    viewer.zoomTo();
+    viewer.render();
+  }
+
+  function toggleCell() {
+    if (!viewer) return;
+    cellVisible = !cellVisible;
+    if (cellVisible) viewer.addUnitCell(); else viewer.removeUnitCell();
+    viewer.render();
+    const btn = document.getElementById('btn-cell');
+    if (btn) { btn.style.color = cellVisible ? 'var(--accent)' : 'var(--muted)'; btn.style.borderColor = cellVisible ? 'var(--accent)' : 'var(--border)'; }
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      const btn = document.getElementById('copy-btn');
+      if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ Copied!';
+        btn.style.color = 'var(--success)';
+        btn.style.borderColor = 'var(--success)';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.color = 'var(--muted)'; btn.style.borderColor = 'var(--border)'; }, 2000);
+      }
+    });
+  }
+
+  // Make functions global
+  window.setStyle = setStyle;
+  window.toggleSpin = toggleSpin;
+  window.resetView = resetView;
+  window.toggleCell = toggleCell;
+  window.copyLink = copyLink;
+</script>
